@@ -153,7 +153,7 @@ angular.module('firebaseApp')
     }
 
     //Join Room
-    var join = function (s,id, rs) {
+    var join = function (s,id,rs) {
       stream = s;
       roomId = id;
       remoteStreams = rs
@@ -166,14 +166,37 @@ angular.module('firebaseApp')
           }
         })
         if(!myId) {
-          peersArr.$add(username).then(function (ref) {
+          var user = {"username": username}
+          if (peersArr.length == 0) {
+            user.first = true
+          }
+          peersArr.$add(user).then(function (ref) {
             myId = ref.key();
           });
         }
       });
     };
 
+    var monitor = function(s,id,rs) {
+      stream = s;
+      roomId = id;
+      remoteStreams = rs
+
+      var d = $q.defer();
+      //get firebase room reference
+      ref = new Firebase(config.firebaseURL + id);
+      $firebase(ref.child('peers'))
+        .$asArray().$loaded().then(function (data) {
+          _.each(data,function(peer) {
+            if(peer.first){
+              console.log("found it!")
+            }
+          })
+        });
+    }
+
     return {
-      join : join
+      join : join,
+      monitor : monitor
     };
   });

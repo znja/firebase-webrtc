@@ -17,7 +17,7 @@
   <tbody>
     <tr ng-repeat="session in list">
       <th>
-        {{session.id}}
+        {{session.$id}}
       </th>
       <td>
         {{session.createdBy}}
@@ -26,7 +26,13 @@
         {{session.createdAt}}
       </td>
       <td>
+        <button name="monitor" class="btn btn-success btn-block" ng-click="monitor(session.$id)"> MONITOR </button>
+      </td>
+      <td>
         <button name="join" class="btn btn-success btn-block" ng-click="join(session.$id)"> JOIN </button>
+      </td>
+      <td>
+        <button name="remove" class="btn btn-danger btn-block" ng-click="remove(session.$id)"> REMOVE </button>
       </td>
     </tr>
   </tbody>

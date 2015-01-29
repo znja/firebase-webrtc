@@ -9,8 +9,9 @@
  */
 angular.module('firebaseApp')
   .controller('RoomCtrl', function ($scope, $routeParams, $sce, $firebase, config, webrtcFactory, camaraService ) {
-
-    var roomId = $routeParams.id;
+    var params = $routeParams.id.split("?");
+    var roomId = params[0]
+    var monitor = params[1]
 
     var ref = new Firebase(config.firebaseURL + '/room' + roomId);
     var sRef = ref.child('signaling');
@@ -31,7 +32,11 @@ angular.module('firebaseApp')
     camaraService.getVideo().then(function (s) {
       mediaStream = s;
       streamURL = s.objectURL;
-      webrtcFactory.join(s,roomId, $scope.remoteStreams);
+      if (monitor === "monitor") {
+        webrtcFactory.monitor(s,roomId, $scope.remoteStreams);
+      } else {
+        webrtcFactory.join(s,roomId, $scope.remoteStreams);
+      }
     });
 
     $scope.localStream = function(){

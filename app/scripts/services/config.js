@@ -9,7 +9,7 @@
  */
 angular.module('firebaseApp')
   .constant('config',
-    { firebaseURL: 'https://webrtc-cloud.firebaseio.com/',
+    { firebaseURL: 'https://intense-torch-7181.firebaseio.com/',
       iceServers: {iceServers : [ {url:'stun:stun.l.google.com:19302'},
                   {
                     url: 'turn:numb.viagenie.ca',

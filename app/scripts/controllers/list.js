@@ -20,4 +20,13 @@ angular.module('firebaseApp')
       $location.path( '/room/' + id );
     };
 
+    $scope.monitor = function (id) {
+      $location.path( '/room/' + id + "?monitor")
+    }
+
+    $scope.remove = function (id) {
+      ref.child(id).remove()
+      console.log("deleted room")
+    }
+
   });
