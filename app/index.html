@@ -13,6 +13,7 @@
     <!-- build:css(.tmp) styles/main.css -->
     <link rel="stylesheet" href="styles/main.css">
     <!-- endbuild -->
+    <base href="/">
   </head>
   <body ng-app="firebaseApp">
     <!--[if lt IE 7]>
@@ -21,16 +22,11 @@
 
     <!-- Add your site or application content here -->
     <div class="container-fluid">
-      <div class="header">
-        <!-- <ul class="nav nav-pills pull-right">k
-          <li class="active"><a ng-href="#">Home</a></li>
-          <li><a ng-href="#/about">About</a></li>
-          <li><a ng-href="#">Contact</a></li>
-        </ul> -->
-        <h3 class="text-muted" href="/">Firebase Chat Rooms</h3>
+      <div class="header" style="text-align: center;">
+        <h3 class="text-muted" href="/"> <img src="/images/fire.gif" alt="" /> Base del Fuego WebRtc  <img src="/images/fire.gif" alt="" /></h3>
       </div>
 
-      <div ng-view=""></div>
+      <div class='container-fluid' ng-view=""></div>
 
       <div class="footer">
         <p><span class="glyphicon glyphicon-heart"></span> from the SDK-Cloud team</p>
@@ -68,20 +64,23 @@
     <script src="bower_components/angularfire/dist/angularfire.js"></script>
     <script src="bower_components/lodash/lodash.js"></script>
     <script src="bower_components/angular-local-storage/dist/angular-local-storage.js"></script>
+    <script src="bower_components/bluebird/js/browser/bluebird.js"></script>
+    <script src="bower_components/spin.js/spin.js"></script>
     <!-- endbower -->
     <!-- endbuild -->
-
+    <script src="bower_components/node-uuid/uuid.js"></script>
         <!-- build:js({.tmp,app}) scripts/scripts.js -->
         <script src="scripts/app.js"></script>
         <script src="scripts/controllers/main.js"></script>
         <script src="scripts/controllers/about.js"></script>
         <script src="scripts/controllers/room.js"></script>
-        <script src="scripts/controllers/list.js"></script>
         <script src="scripts/services/webrtcfactory.js"></script>
         <script src="scripts/services/adapter.js"></script>
         <script src="scripts/services/camaraservice.js"></script>
         <script src="scripts/services/config.js"></script>
-        <script src='scripts/directive/videoplayer.js'></script>
+        <script src='scripts/directives/videoplayer.js'></script>
+        <script src="scripts/services/randomusername.js"></script>
+        <script src="scripts/directives/spinner.js"></script>
         <!-- endbuild -->
 </body>
 </html>

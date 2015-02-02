@@ -1,35 +1,44 @@
-<div class='container'>
-  <div class="jumbotron">
-    <h1>Welcome</h1>
-    <p class="lead">
-      A Sample app on WebRTC + Firebase
-    </p>
-  </div>
-  <div class='row usernameForm' ng-show="!username">
-    <h2>First time here eh? Please register an email</h2>
-    <form class='form-inline' ng-submit="submitUsername()">
-      <div class="form-group">
-        <label for="email">Email address</label>
-        <input type="email" class="form-control" id="email" placeholder="Enter email" ng-model="email" required>
-      </div>
-      <div class="form-group">
-        <button type="submit" class="btn btn-success pull-right">Submit</button>
-      </div>
-    </form>
-  </div>
 
-  <div class='row ' ng-show='username'>
-    <div class='col-md-12'>
-      <p>
-        Welcome: {{username}}
-      </p>
-    </div>
-    <div class='col-md-6'>
-      <button name="create" class='btn btn-success btn-block' ng-click='create()'> Create Room </button>
-    </div>
-    <div class="col-md-6">
-      <button name="create" class='btn btn-default btn-block' ng-click='toList()'> View list </button>
-    </div>
+<div class='row '>
+  <div class='col-md-12 '>
+    <button name="create" class='btn btn-info pull-right' ng-click='create()'> Create Room </button>
   </div>
-  <br>
+</div>
+
+<div class='container'>
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>
+          ID
+        </th>
+        <th>
+          # of Peers
+        </th>
+        <th>
+          Created at
+        </th>
+        <th>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="session in list">
+        <th>
+          {{session.$id}}
+        </th>
+        <td>
+          {{session.peerCount}}
+        </td>
+        <td>
+          {{session.createdAt}}
+        </td>
+        <td>
+          <button name="join" class="btn btn-success" ng-click="join(session.$id)"> JOIN </button>
+          <button name="join" class="btn btn-primary"  ng-disabled='true'> MONITOR </button>
+          <button name="join" class="btn btn-danger" ng-disabled="session.peerCount" ng-click="remove(session.$id)"> Delete </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>

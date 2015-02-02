@@ -8,10 +8,10 @@
  * Factory in the firebaseApp.
  */
 angular.module('firebaseApp')
-  .factory('webrtcFactory', function ($window, $q, $firebase, config,localStorageService) {
+  .factory('webrtcFactory', function ($rootScope, $q, $firebase, config) {
     var stream;
     var roomId;
-    var username = localStorageService.get('userName');
+    var username;
     var myId; //firebase generated key by push method
     var peerConnections = {};
     var iceConfig = config.iceConfig
@@ -49,6 +49,7 @@ angular.module('firebaseApp')
       return pc;
     }
 
+    //Make Initial Offer to new peer
     function makeOffer(id) {
       var pc = getPeerConnection(id);
       pc.createOffer(function (sdp) {
@@ -62,30 +63,6 @@ angular.module('firebaseApp')
         console.log(e);
       },
       { mandatory: { OfferToReceiveVideo: true, OfferToReceiveAudio: true }});
-    }
-
-    // get list of peers and when some one joins make an offer to start connection
-    var managePeers = function (ref) {
-      if(ref.event === 'child_added'){
-        console.log('Peer Joined: ', peersArr.$getRecord(ref.key).$value);
-        if(ref.key !== myId){
-          makeOffer(ref.key);
-        }
-      }else {
-        console.log('event: ', e)
-      }
-    };
-
-    //Get list of peers connected
-    function getPeers() {
-      var d = $q.defer();
-      $firebase(ref.child('peers'))
-        .$asArray().$loaded().then(function (data) {
-          peersArr = data;
-          peersArr.$watch(managePeers);
-          d.resolve();
-        });
-      return d.promise;
     }
 
     //manage signal
@@ -121,58 +98,79 @@ angular.module('firebaseApp')
       }
     }
 
-    function recievedSignal() {
-      //When i get a signal
+    //Get Signaling object
+    function getSignaling() {
+      signaling = $firebase(ref.child('signaling'));
+      return signaling.$asObject().$loaded().then(function (data) {
+          signalingObj = data;
+        });
+    }
+
+    //Get list of peers connected
+    function getPeers() {
+      peers = $firebase(ref.child('peers'))
+      return peers.$asArray().$loaded().then(function (data) {
+          peersArr = data;
+        });
+    }
+
+    // Watch the signaling object returns promise
+    function watchSignaling() {
+      var d = $q.defer();
       signalingObj.$watch(function() {
         if(signalingObj.signal.to === myId){
           console.log('incoming Signal: ', signalingObj.signal);
           handleSignal(signalingObj.signal);
         }
       });
-
-    }
-
-
-    function init(id) {
-      var d = $q.defer();
-      //get firebase room reference
-      ref = new Firebase(config.firebaseURL + id);
-
-      getPeers().then(function () {
-        signaling = $firebase(ref.child('signaling'));
-        signaling.$asObject().$loaded().then(function (data) {
-
-            signalingObj = data;
-
-            recievedSignal();
-
-            d.resolve();
-          });
-      })
+      d.resolve();
       return d.promise;
     }
 
+    // Watch the peers object returns promise
+    function watchPeers() {
+      var d = $q.defer();
+      peersArr.$watch(function (ref) {
+        if(ref.event === 'child_added'){
+          if(ref.key !== myId){
+            console.log('Peer Joined: ', peersArr.$getRecord(ref.key).$value);
+            makeOffer(ref.key);
+          }
+        }else {
+          console.log('event: ', ref);
+        }
+        d.resolve();
+      });
+      return d.promise;
+    }
+
+    // Add myself to peers list returns promise
+    function addToPeersList() {
+      return peers.$set(myId, username);
+    }
+
+    function init(id) {
+      //get firebase room reference
+      ref = new Firebase(config.firebaseURL + id);
+      myId = uuid.v1();
+
+      var groupPromise = $q.all([getSignaling(), getPeers()])
+        .then( watchSignaling )
+        .then( addToPeersList )
+        .then( watchPeers )
+    }
+
     //Join Room
-    var join = function (s,id, rs) {
+    var join = function (s,id, rs, un) {
       stream = s;
       roomId = id;
-      remoteStreams = rs
-      init(id).then(function () {
-
-        //get my id if i have already joined the room. else add myself to list of people.
-        _.each(peersArr,function(peer) {
-          if(peer.$value === username){
-            myId = peer.$id;
-          }
-        })
-        if(!myId) {
-          peersArr.$add(username).then(function (ref) {
-            myId = ref.key();
-          });
-        }
-      });
+      remoteStreams = rs;
+      username = un;
+      init(id);
     };
 
+
+    window.peerConnections = peerConnections;
     return {
       join : join
     };

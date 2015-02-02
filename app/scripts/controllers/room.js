@@ -8,7 +8,7 @@
  * Controller of the firebaseApp
  */
 angular.module('firebaseApp')
-  .controller('RoomCtrl', function ($scope, $routeParams, $sce, $firebase, config, webrtcFactory, camaraService ) {
+  .controller('RoomCtrl', function ($scope, $rootScope, $routeParams, $sce, $firebase, config, webrtcFactory, camaraService , randomUsernameService) {
 
     var roomId = $routeParams.id;
 
@@ -31,7 +31,7 @@ angular.module('firebaseApp')
     camaraService.getVideo().then(function (s) {
       mediaStream = s;
       streamURL = s.objectURL;
-      webrtcFactory.join(s,roomId, $scope.remoteStreams);
+      webrtcFactory.join(s,roomId, $scope.remoteStreams, randomUsernameService.get());
     });
 
     $scope.localStream = function(){
@@ -45,6 +45,11 @@ angular.module('firebaseApp')
     $scope.stop = function () {
       camaraService.stop();
     };
+
+    // 
+    // $scope.$on('$routeChangeStart',function () {
+    //   camaraService.stop();
+    // });
 
     $scope.remotePeer = [];
 

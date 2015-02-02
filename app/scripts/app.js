@@ -16,7 +16,7 @@ angular
     'firebase',
     'LocalStorageModule'
   ])
-  .config(function ($routeProvider) {
+  .config(function ($routeProvider, $locationProvider) {
     $routeProvider
       .when('/', {
         templateUrl: 'views/main.html',
@@ -30,13 +30,15 @@ angular
         templateUrl: 'views/room.html',
         controller: 'RoomCtrl'
       })
-      .when('/list', {
-        templateUrl: 'views/list.html',
-        controller: 'ListCtrl'
+      .when('/monitor/:id', {
+        templateUrl: 'view/monitor.html',
+        controller: 'MonitorCtrl'
       })
       .otherwise({
         redirectTo: '/'
       });
+
+    $locationProvider.html5Mode(true);
   });
 
 //Adapter for cross browser compatibility (maybe should be something in angular)
