@@ -8,21 +8,21 @@
  * Factory in the firebaseApp.
  */
 angular.module('firebaseApp')
-  .factory('webrtcFactory', function ($rootScope, $q, $firebase, config) {
+  .factory('webrtcFactory', function ($rootScope, $q, $firebase, $window, config) {
     var stream;
     var roomId;
     var username;
     var myId; //firebase generated key by push method
     var peerConnections = {};
     var iceConfig = config.iceConfig
-    var remoteStreams = [];
+    var addStreamCB;
 
     //firebase shinanigens
     var ref;
     var peers;
     var peersArr;
     var signaling;
-    var signalingObj;
+    var signalingArr;
 
     function getPeerConnection(id) {
       if (peerConnections[id]) {
@@ -34,17 +34,11 @@ angular.module('firebaseApp')
         pc.addStream(stream);
         }
       pc.onicecandidate = function (evnt) {
-        signalingObj.signal = { from: myId, to: id, ice: evnt.candidate, type: 'ice' };
-        signalingObj.$save().then(function (ref) {
-          console.log('type Ice sending signal: ', signalingObj.signal);
-        });
+        sendSignal(id, myId, {ice: evnt.candidate});
       };
       pc.onaddstream = function (evnt) {
         console.log('Received new stream' , id, evnt.stream);
-        remoteStreams.push({
-          id: id,
-          stream: URL.createObjectURL(evnt.stream)
-        });
+        addStreamCB({stream: URL.createObjectURL(evnt.stream)});
       };
       return pc;
     }
@@ -54,11 +48,7 @@ angular.module('firebaseApp')
       var pc = getPeerConnection(id);
       pc.createOffer(function (sdp) {
         pc.setLocalDescription(sdp);
-        console.log('Creating an offer for', id);
-        signalingObj.signal = { from: myId, to: id, sdp: sdp, type: 'sdp-offer' };
-        signalingObj.$save().then(function(ref) {
-          console.log('type sdp-offer sending signal: ', signalingObj.signal);
-        });
+        sendSignal(id, myId, {sdp: sdp});
       }, function (e) {
         console.log(e);
       },
@@ -66,61 +56,62 @@ angular.module('firebaseApp')
     }
 
     //manage signal
-    function handleSignal(data) {
-      var pc = getPeerConnection(data.from);
-      switch (data.type) {
-        case 'sdp-offer':
+    function handleMessage(from , data) {
+      var pc = getPeerConnection(from);
+        if(data.sdp){
           pc.setRemoteDescription(new RTCSessionDescription(data.sdp), function () {
-            console.log('Setting remote description by offer');
-            pc.createAnswer(function (sdp) {
-              pc.setLocalDescription(sdp);
-              signalingObj.signal = { from: myId, to: data.from, sdp: sdp, type: 'sdp-answer' };
-              signalingObj.$save().then(function () {
-                console.log('sdp-answer sending signal: ', signalingObj.signal);
+            if (pc.remoteDescription.type == "offer"){
+              pc.createAnswer(function (sdp) {
+                pc.setLocalDescription(sdp);
+                sendSignal(from, myId, {sdp: sdp});
               });
-            });
-
+            }
           });
-          break;
-        case 'sdp-answer':
-          pc.setRemoteDescription(new RTCSessionDescription(data.sdp), function () {
-            console.log('Setting remote description by answer');
-          }, function (e) {
-            console.error(e);
-          });
-          break;
-        case 'ice':
-          if (data.ice) {
-            console.log('Adding ice candidates');
-            pc.addIceCandidate(new RTCIceCandidate(data.ice));
-          }
-          break;
-      }
+        } else{
+          pc.addIceCandidate(new RTCIceCandidate(data.ice));
+        }
     }
 
-    //Get Signaling object
+    //send message to from {../toID/fromId + payload}
+    function sendSignal(to, from, data) {
+      console.log('to: ' + to + 'from: ' + from + 'data: ' , data);
+      ref.child('signaling/' + to + '/' + from).push(data);
+    }
+
+    //Get Signaling object and return promise when loaded.
     function getSignaling() {
-      signaling = $firebase(ref.child('signaling'));
-      return signaling.$asObject().$loaded().then(function (data) {
-          signalingObj = data;
-        });
+      signaling = $firebase(ref.child('signaling/' + myId));
+      return signaling.$asArray().$loaded().then(function (data) {
+        signalingArr = data;
+      });
     }
 
     //Get list of peers connected
     function getPeers() {
-      peers = $firebase(ref.child('peers'))
+      peers = $firebase(ref.child('peers'));
       return peers.$asArray().$loaded().then(function (data) {
           peersArr = data;
         });
     }
 
-    // Watch the signaling object returns promise
+    // Watch my signaling object.
+    // Returns promise
     function watchSignaling() {
       var d = $q.defer();
-      signalingObj.$watch(function() {
-        if(signalingObj.signal.to === myId){
-          console.log('incoming Signal: ', signalingObj.signal);
-          handleSignal(signalingObj.signal);
+      signalingArr.$watch(function(e) {
+        //if child added handle message in added record
+        if(e.event = 'child_added'){
+          var fromId = e.key;
+          // get array of messages coming from peer
+          var fromMessageArr = $firebase(ref.child('signaling/' + myId + '/' + fromId)).$asArray();
+          // watch for any masseges added to the fromPeer message array
+          fromMessageArr.$watch(function (e) {
+            // when message added call handleMessage function
+            if(e.event = 'child_added'){
+              // console.log(fromId + ', data: ' , fromMessageArr.$getRecord(e.key));
+              handleMessage(fromId , fromMessageArr.$getRecord(e.key));
+            }
+          });
         }
       });
       d.resolve();
@@ -131,11 +122,9 @@ angular.module('firebaseApp')
     function watchPeers() {
       var d = $q.defer();
       peersArr.$watch(function (ref) {
-        if(ref.event === 'child_added'){
-          if(ref.key !== myId){
-            console.log('Peer Joined: ', peersArr.$getRecord(ref.key).$value);
-            makeOffer(ref.key);
-          }
+        if(ref.event === 'child_added' && ref.key !== myId){
+          console.log('Peer Joined: ', peersArr.$getRecord(ref.key).$value);
+          makeOffer(ref.key);
         }else {
           console.log('event: ', ref);
         }
@@ -161,11 +150,11 @@ angular.module('firebaseApp')
     }
 
     //Join Room
-    var join = function (s,id, rs, un) {
+    var join = function (s,id, un, addstream) {
       stream = s;
       roomId = id;
-      remoteStreams = rs;
       username = un;
+      addStreamCB = addstream;
       init(id);
     };
 

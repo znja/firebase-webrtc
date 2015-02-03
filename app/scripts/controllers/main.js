@@ -39,7 +39,7 @@ angular.module('firebaseApp')
       $scope.list = marshalData(data);
 
     });
-    
+
     $scope.join = function (id) {
       $location.path( '/room/' + id );
     };

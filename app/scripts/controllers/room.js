@@ -19,19 +19,23 @@ angular.module('firebaseApp')
     var mediaStream; //save Local media stream object
     var streamURL; //save locar media stream url (needed for chrome)
 
+
     $scope.remoteStreams = [];
-
-
     // Wait till object is loaded from Firebase to bind data
     parent.$asObject().$loaded().then(function (data) {
       $scope.session = data;
     });
 
+    var addStream = function(stream){
+      $scope.remoteStreams.push(stream);
+      $scope.$apply()
+    }
+
     //ask for video
     camaraService.getVideo().then(function (s) {
       mediaStream = s;
       streamURL = s.objectURL;
-      webrtcFactory.join(s,roomId, $scope.remoteStreams, randomUsernameService.get());
+      webrtcFactory.join(s,roomId, randomUsernameService.get(), addStream);
     });
 
     $scope.localStream = function(){
@@ -46,7 +50,7 @@ angular.module('firebaseApp')
       camaraService.stop();
     };
 
-    // 
+    //
     // $scope.$on('$routeChangeStart',function () {
     //   camaraService.stop();
     // });
