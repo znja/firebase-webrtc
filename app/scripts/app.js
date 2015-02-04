@@ -38,7 +38,6 @@ angular
         redirectTo: '/'
       });
 
-    $locationProvider.html5Mode(true);
   });
 
 //Adapter for cross browser compatibility (maybe should be something in angular)

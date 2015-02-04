@@ -8,9 +8,10 @@
  * Controller of the firebaseApp
  */
 angular.module('firebaseApp')
-  .controller('RoomCtrl', function ($scope, $rootScope, $routeParams, $sce, $firebase, config, webrtcFactory, camaraService , randomUsernameService) {
+  .controller('RoomCtrl', function ($scope, $rootScope,$window, $routeParams, $sce, $firebase, config, webrtcFactory, camaraService , randomUsernameService) {
 
     var roomId = $routeParams.id;
+    var username = randomUsernameService.get();
 
     var ref = new Firebase(config.firebaseURL + '/room' + roomId);
     var sRef = ref.child('signaling');
@@ -19,6 +20,8 @@ angular.module('firebaseApp')
     var mediaStream; //save Local media stream object
     var streamURL; //save locar media stream url (needed for chrome)
 
+    $scope.messages = [];
+    $scope.messageToSend = '';
 
     $scope.remoteStreams = [];
     // Wait till object is loaded from Firebase to bind data
@@ -26,16 +29,26 @@ angular.module('firebaseApp')
       $scope.session = data;
     });
 
+    $scope.sendMessage = function() {
+      $scope.messages.push(username + ': ' + $scope.messageToSend);
+      webrtcFactory.send($scope.messageToSend);
+      $scope.messageToSend = '';
+    }
+
+    var addMessages = function(message) {
+      $scope.messages.push(message)
+      $scope.$apply();
+    }
     var addStream = function(stream){
       $scope.remoteStreams.push(stream);
-      $scope.$apply()
+      $scope.$apply();
     }
 
     //ask for video
     camaraService.getVideo().then(function (s) {
       mediaStream = s;
       streamURL = s.objectURL;
-      webrtcFactory.join(s,roomId, randomUsernameService.get(), addStream);
+      webrtcFactory.join(s,roomId, randomUsernameService.get(), addStream, addMessages);
     });
 
     $scope.localStream = function(){

@@ -12,10 +12,12 @@ angular.module('firebaseApp')
     var stream;
     var roomId;
     var username;
+    var role;
     var myId; //firebase generated key by push method
     var peerConnections = {};
-    var iceConfig = config.iceConfig
+    var iceConfig = config.iceConfig;
     var addStreamCB;
+    var addMessagesCB;
 
     //firebase shinanigens
     var ref;
@@ -23,16 +25,44 @@ angular.module('firebaseApp')
     var peersArr;
     var signaling;
     var signalingArr;
+    var dataChannels = [];
+
+    // $window.offererDataChannel = offererDataChannel;
+
+
+    function setChannelEvents(channel) {
+        channel.onmessage = function (event) {
+            // var data = JSON.parse(event.data);
+            addMessagesCB(event.data);
+        };
+        // channel.onopen = function () {
+        //     channel.push = channel.send;
+        //     channel.send = function (data) {
+        //         channel.push(JSON.stringify(data));
+        //     };
+        // };
+        //
+        // channel.onerror = function (e) {
+        //     console.error('channel.onerror', JSON.stringify(e, null, '\t'));
+        // };
+        //
+        // channel.onclose = function (e) {
+        //     console.warn('channel.onclose', JSON.stringify(e, null, '\t'));
+        // };
+    }
 
     function getPeerConnection(id) {
       if (peerConnections[id]) {
         return peerConnections[id];
       }
       var pc = new RTCPeerConnection(iceConfig);
+
       peerConnections[id] = pc;
       if(stream){
         pc.addStream(stream);
         }
+      dataChannels.push( pc.createDataChannel('channel', {}) );
+
       pc.onicecandidate = function (evnt) {
         sendSignal(id, myId, {ice: evnt.candidate});
       };
@@ -40,6 +70,11 @@ angular.module('firebaseApp')
         console.log('Received new stream' , id, evnt.stream);
         addStreamCB({stream: URL.createObjectURL(evnt.stream)});
       };
+
+      pc.ondatachannel = function (event) {
+        setChannelEvents(event.channel);
+      };
+
       return pc;
     }
 
@@ -60,7 +95,7 @@ angular.module('firebaseApp')
       var pc = getPeerConnection(from);
         if(data.sdp){
           pc.setRemoteDescription(new RTCSessionDescription(data.sdp), function () {
-            if (pc.remoteDescription.type == "offer"){
+            if (pc.remoteDescription.type === 'offer'){
               pc.createAnswer(function (sdp) {
                 pc.setLocalDescription(sdp);
                 sendSignal(from, myId, {sdp: sdp});
@@ -100,14 +135,14 @@ angular.module('firebaseApp')
       var d = $q.defer();
       signalingArr.$watch(function(e) {
         //if child added handle message in added record
-        if(e.event = 'child_added'){
+        if(e.event === 'child_added'){
           var fromId = e.key;
           // get array of messages coming from peer
           var fromMessageArr = $firebase(ref.child('signaling/' + myId + '/' + fromId)).$asArray();
           // watch for any masseges added to the fromPeer message array
           fromMessageArr.$watch(function (e) {
             // when message added call handleMessage function
-            if(e.event = 'child_added'){
+            if(e.event === 'child_added'){
               // console.log(fromId + ', data: ' , fromMessageArr.$getRecord(e.key));
               handleMessage(fromId , fromMessageArr.$getRecord(e.key));
             }
@@ -135,7 +170,14 @@ angular.module('firebaseApp')
 
     // Add myself to peers list returns promise
     function addToPeersList() {
-      return peers.$set(myId, username);
+      if(peersArr.length < 1){
+        role = 'hub';
+        return peers.$set(myId, {username: username, role: role});
+      } else {
+        role = 'spoke';
+        return peers.$set(myId, {username: username, role: role});
+      }
+
     }
 
     function init(id) {
@@ -143,24 +185,30 @@ angular.module('firebaseApp')
       ref = new Firebase(config.firebaseURL + id);
       myId = uuid.v1();
 
-      var groupPromise = $q.all([getSignaling(), getPeers()])
+      $q.all([getSignaling(), getPeers()])
         .then( watchSignaling )
         .then( addToPeersList )
-        .then( watchPeers )
+        .then( watchPeers );
     }
 
     //Join Room
-    var join = function (s,id, un, addstream) {
+    var join = function (s,id, un, as, am) {
       stream = s;
       roomId = id;
       username = un;
-      addStreamCB = addstream;
+      addStreamCB = as;
+      addMessagesCB = am;
       init(id);
     };
 
+    var send = function (message) {
+      _.each(dataChannels, function (dataChannel) {
+        dataChannel.send(username + ': ' + message);
+      });
+    };
 
-    window.peerConnections = peerConnections;
     return {
-      join : join
+      join : join,
+      send : send
     };
   });
